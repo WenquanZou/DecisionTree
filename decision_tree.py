@@ -32,9 +32,12 @@ def decision_tree_learning(train_dataset, depth):
     else:
         # Find best split method
         split_attr, split_value = find_split(train_dataset)
+        # Split the training set
         left_dataset, right_dataset = split_dataset(train_dataset, split_attr, split_value)
+        # Recursive call
         left, l_depth = decision_tree_learning(left_dataset, depth + 1)
         right, r_depth = decision_tree_learning(right_dataset, depth + 1)
+        # Construct root node
         node = {"attr": split_attr, "value": split_value,
                 "left": left, "right": right, "is_leaf": False, "label": None}
         return node, max(l_depth, r_depth)
@@ -46,8 +49,8 @@ def predict(trained_node, data):
     pass
 
 
-def evaluate(trained_node, test_dataset, k=10):
-    # TODO: 10 fold cross validation
+def evaluate(test_dataset, trained_tree):
+    # TODO: 10 fold cross validation + Metric(Eric)
     pass
 
 

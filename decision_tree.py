@@ -10,6 +10,21 @@ def check_label(train_dataset):
             return False
     return True
 
+
+def find_entropy_attr(dataset, target_attr):
+    unique_value = set()
+    value_set = list()
+    entropy = 0
+    for data in dataset:
+        unique_value.add(data['attrs'][target_attr])
+        value_set.append(data['attrs'][target_attr])
+    for v in unique_value:
+        count = value_set.count(v)
+        prob = count / len(value_set)
+        entropy = entropy + -prob * np.log2(prob)
+    return entropy
+
+
 def find_split(train_dataset):
     # TODO:Implement find_split
     return 0, 0
@@ -62,4 +77,4 @@ def evaluate(test_dataset, trained_tree):
 
 file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
 train_dataset = [{"attrs": line[:-1], "label": line[-1]} for line in file]
-print(train_dataset)
+print(find_entropy_attr(train_dataset, 0))

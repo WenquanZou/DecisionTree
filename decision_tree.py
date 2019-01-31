@@ -10,11 +10,6 @@ def check_label(train_dataset):
             return False
     return True
 
-def find_entropy(train_dataset):
-    # Calculate the entropy of the dataset
-
-
-
 def find_split(train_dataset):
     # TODO:Implement find_split
     return 0, 0

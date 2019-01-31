@@ -1,5 +1,4 @@
 import numpy as np
-import random
 import matplotlib.pyplot as plt
 
 
@@ -103,17 +102,66 @@ def cross_fold_split(train_dataset):
     for i in range (10):
         fold_set = list()
         while len(fold_set) < fold_size:
-            rand_index = random.randrange(len(train_dataset_copy))
+            rand_index = np.random.randint(0, len(train_dataset_copy))
             fold_set.append(train_dataset_copy.pop(rand_index))
         dataset.append(fold_set)
     return dataset
 
 
+def c_matrix(actual, predicted):
+    c_matrix = np.zeros((4,4))
+    for i in range(len(actual)):
+        c_matrix[int(actual[i]) - 1][int(predicted[i]) - 1] += 1
+    return c_matrix
+
+def calc_eval(c_matrix):
+    precision_sum = 0
+    recall_sum = 0
+    for i in range(4):
+        precision_denom = 0
+        recall_denom = 0
+        for j in range(4):
+            precision_denom += c_matrix[i][j]
+            recall_denom += c_matrix[j][i]
+        precision_sum += (c_matrix[i][i] / precision_denom)
+        recall_sum += (c_matrix[i][i] / recall_denom)
+
+    precision = precision_sum / 4
+    recall = recall_sum / 4
+
+    f1_data = 2 * precision * recall / (precision + recall)
+    return precision, recall, f1_data
+
+def cross_validation(dataset):
+    folds = cross_fold_split(dataset)
+    for fold in folds:
+        train_dataset = list(folds)
+        train_dataset.remove(fold)
+        train_dataset = sum(train_dataset, [])
+        test_dataset = list(fold)
+        dtree, _ = decision_tree_learning(train_dataset, 0)
+        predicted_labels = list()
+        actual_labels = list()
+        for data in test_dataset:
+            predicted_labels.append(predict(dtree, data["attrs"]))
+            actual_labels.append(data["label"])
+            print(predicted_labels, actual_labels)
+        print(c_matrix(actual_labels, predicted_labels))
+        print(calc_eval(c_matrix(actual_labels,predicted_labels)))
+    pass
+
+
 def evaluate(test_dataset, trained_tree):
-    # TODO: 10 fold cross validation + Metric(Eric)
+    # TODO: 10 fold cross validation + Metric
+
+
+    # predict, actual
+    # confusion matrix (prdict, actual)
+
     pass
 
 file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
 train_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in file]
 node, _ = decision_tree_learning(train_dataset, 0)
 print(predict(node, [-52,-55,-52,-43,-61,-86,-83]))
+print(cross_validation(train_dataset))

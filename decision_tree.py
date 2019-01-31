@@ -10,6 +10,10 @@ def check_label(train_dataset):
             return False
     return True
 
+def find_entropy(train_dataset):
+    # Calculate the entropy of the dataset
+
+
 
 def find_split(train_dataset):
     # TODO:Implement find_split
@@ -46,10 +50,15 @@ def decision_tree_learning(train_dataset, depth):
 
 
 def predict(trained_node, data):
-    # TODO
-    # trained_node:: decision tree, data::{attrs:list, label:value}
-    pass
-
+    # trained_node:: decision tree, data::list
+    if trained_node["is_leaf"]:
+        return trained_node["label"]
+    elif data[trained_node["attr"] - 1] < trained_node["value"]:
+        left = trained_node["left"]
+        return predict(left, data)
+    else:
+        right = trained_node["right"]
+        return predict(right, data)
 
 def evaluate(test_dataset, trained_tree):
     # TODO: 10 fold cross validation + Metric(Eric)
@@ -57,5 +66,5 @@ def evaluate(test_dataset, trained_tree):
 
 
 file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
-train_dataset = [{"attrs": line[:-2], "label": line[-1]} for line in file]
+train_dataset = [{"attrs": line[:-1], "label": line[-1]} for line in file]
 print(train_dataset)

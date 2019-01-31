@@ -117,20 +117,26 @@ def c_matrix(actual, predicted):
 def calc_eval(c_matrix):
     precision_sum = 0
     recall_sum = 0
+    rate_sum = 0
+    total = 0
     for i in range(4):
         precision_denom = 0
         recall_denom = 0
         for j in range(4):
             precision_denom += c_matrix[i][j]
             recall_denom += c_matrix[j][i]
+            total += c_matrix[i][j]
         precision_sum += (c_matrix[i][i] / precision_denom)
         recall_sum += (c_matrix[i][i] / recall_denom)
+        rate_sum += c_matrix[i][i]
 
     precision = precision_sum / 4
     recall = recall_sum / 4
 
     f1_data = 2 * precision * recall / (precision + recall)
-    return precision, recall, f1_data
+    rate = rate_sum / total
+    return precision, recall, f1_data, rate
+
 
 def cross_validation(dataset):
     folds = cross_fold_split(dataset)
@@ -152,11 +158,7 @@ def cross_validation(dataset):
 
 
 def evaluate(test_dataset, trained_tree):
-    # TODO: 10 fold cross validation + Metric
-
-
-    # predict, actual
-    # confusion matrix (prdict, actual)
+    # TODO: 10 fold repeat
 
     pass
 

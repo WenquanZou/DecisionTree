@@ -4,9 +4,11 @@ import matplotlib.pyplot as plt
 
 def check_label(train_dataset):
     # Check all the label of the dataset
-    # TODO:Check all the label of the train_dataset
-
-    return False
+    current_label = 0
+    for data_dict in train_dataset:
+        if current_label != data_dict["label"]:
+            return False
+    return True
 
 
 def find_split(train_dataset):

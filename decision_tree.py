@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def check_label(train_dataset):
     # Check all the label of the dataset
-    current_label = 0
+    current_label = train_dataset[0]["label"]
     for data_dict in train_dataset:
         if current_label != data_dict["label"]:
             return False
@@ -13,11 +13,10 @@ def check_label(train_dataset):
 
 def find_entropy_attr(dataset, target_attr):
     unique_value = set()
-    value_set = list()
+    value_set = [data["attrs"][target_attr] for data in dataset]
     entropy = 0
     for data in dataset:
-        unique_value.add(data['attrs'][target_attr])
-        value_set.append(data['attrs'][target_attr])
+        unique_value.add(data["attrs"][target_attr])
     for v in unique_value:
         count = value_set.count(v)
         prob = count / len(value_set)
@@ -25,9 +24,34 @@ def find_entropy_attr(dataset, target_attr):
     return entropy
 
 
+def find_entropy_value(entropy_total, dataset, target):
+    unique_value = set()
+    best_split_value = 0
+    max_gain = 0
+    for data in dataset:
+        unique_value.add(data["attrs"][target])
+    for v in unique_value:
+        greater_dataset = list(filter(lambda x: x["attrs"][target] >= v, dataset))
+        smaller_dataset = list(filter(lambda x: x["attrs"][target] < v, dataset))
+        g_entropy = find_entropy_attr(greater_dataset, target)
+        s_entropy = find_entropy_attr(smaller_dataset, target)
+        remainder = len(greater_dataset) / len(dataset) * g_entropy + len(smaller_dataset) / len(dataset) * s_entropy
+        gain = entropy_total - remainder
+        if gain > max_gain:
+            max_gain = gain
+            best_split_value = v
+    return best_split_value
+
+
 def find_split(train_dataset):
-    # TODO:Implement find_split
-    return 0, 0
+    split_attr = None
+    max_entropy = 0
+    for i in range(len(train_dataset[0]["attrs"])):
+        cur_entropy = find_entropy_attr(train_dataset, i)
+        if max_entropy < cur_entropy:
+            max_entropy = cur_entropy
+            split_attr = i
+    return split_attr, find_entropy_value(max_entropy, train_dataset, split_attr)
 
 
 def split_dataset(train_dataset, attr, value):
@@ -63,7 +87,7 @@ def predict(trained_node, data):
     # trained_node:: decision tree, data::list
     if trained_node["is_leaf"]:
         return trained_node["label"]
-    elif data[trained_node["attr"] - 1] < trained_node["value"]:
+    elif data[trained_node["attr"]] < trained_node["value"]:
         left = trained_node["left"]
         return predict(left, data)
     else:
@@ -76,5 +100,6 @@ def evaluate(test_dataset, trained_tree):
 
 
 file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
-train_dataset = [{"attrs": line[:-1], "label": line[-1]} for line in file]
-print(find_entropy_attr(train_dataset, 0))
+train_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in file]
+node, _ = decision_tree_learning(train_dataset, 0)
+print(predict(node, [-52,-55,-52,-43,-61,-86,-83]))

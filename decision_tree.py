@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 
 
@@ -70,10 +71,23 @@ def predict(trained_node, data):
         right = trained_node["right"]
         return predict(right, data)
 
+def cross_fold_split(train_dataset):
+    # Split up the dataset and double shuffle
+    dataset = list()
+    train_dataset_copy = list(train_dataset)
+    fold_size = int(len(train_dataset) / 10)
+    for i in range (10):
+        fold_set = list()
+        while len(fold_set) < fold_size:
+            rand_index = random.randrange(len(train_dataset_copy))
+            fold_set.append(train_dataset_copy.pop(rand_index))
+        dataset.append(fold_set)
+    return dataset
+
+
 def evaluate(test_dataset, trained_tree):
     # TODO: 10 fold cross validation + Metric(Eric)
     pass
-
 
 file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
 train_dataset = [{"attrs": line[:-1], "label": line[-1]} for line in file]

@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def decision_tree_learning(train_dataset, depth):
@@ -115,12 +114,12 @@ def cross_fold_split(train_dataset):
     return dataset
 
 
-def c_matrix(actual, predicted):
+def c_matrix(actual, predicted, n):
     # Generate confusion matrix
-    c_matrix = np.zeros((4, 4))
+    cmatrix = np.zeros((n, n))
     for i in range(len(actual)):
-        c_matrix[int(actual[i]) - 1][int(predicted[i]) - 1] += 1
-    return c_matrix
+        cmatrix[int(actual[i]) - 1][int(predicted[i]) - 1] += 1
+    return cmatrix
 
 
 def cross_validation(dataset):
@@ -128,6 +127,12 @@ def cross_validation(dataset):
     folds = cross_fold_split(dataset)
     max_accuracy = -1
     best_tree = None
+
+    precision_matrix = []
+    recall_matrix = []
+    f1_data_matrix = []
+    accuracy_list = []
+
     for fold in folds:
         # Choose every fold as test set in random order
         train_folds = list(folds)
@@ -136,11 +141,25 @@ def cross_validation(dataset):
         test_fold = list(fold)
         # Training process
         dtree, _ = decision_tree_learning(train_folds, 0)
+        # Evaluate for every class
         precision_list, recall_list, f1_data_list, accuracy = evaluate(dtree, test_fold)
-        print(f'precision: {precision_list}, recall: {recall_list}, f1_data: {f1_data_list}, accuracy: {accuracy}')
+        precision_matrix.append(precision_list)
+        recall_matrix.append(recall_list)
+        f1_data_matrix.append(f1_data_list)
+        accuracy_list.append(accuracy)
         if accuracy > max_accuracy:
             max_accuracy = accuracy
             best_tree = dtree
+
+    average_precision = [np.mean(x) for x in zip(*precision_matrix)]
+    average_recall = [np.mean(x) for x in zip(*recall_matrix)]
+    average_f1_data = [np.mean(x) for x in zip(*f1_data_matrix)]
+    average_accuracy = np.mean(accuracy_list)
+
+    print(f'precision for every class: {average_precision}\n'
+          f'recall for every class: {average_recall}\n'
+          f'f1_data for every class: {average_f1_data}\n'
+          f'accuracy: {average_accuracy}')
     return best_tree
 
 
@@ -153,7 +172,7 @@ def evaluate(dtree, test_fold):
         actual_labels.append(data["label"])
 
     # Generate confusion matrix
-    confusion_matrix = c_matrix(actual_labels, predicted_labels)
+    confusion_matrix = c_matrix(actual_labels, predicted_labels, 4)
     # Keep track on precision and recall of every label to sum
     precision_list = []
     recall_list = []
@@ -190,15 +209,15 @@ def prune(root, dataset, node=None):
     right = node['right']
 
     if left['is_leaf'] and right['is_leaf']:
-        original_score = calc_accuracy(root, dataset)
+        _, _, _, original_score = evaluate(root, dataset)
 
         node['is_leaf'] = True
 
         node['label'] = left['label']
-        left_score = calc_accuracy(root, dataset)
+        _, _, _, left_score = evaluate(root, dataset)
 
         node['label'] = right['label']
-        right_score = calc_accuracy(root, dataset)
+        _, _, _, right_score = evaluate(root, dataset)
 
         changed_to_leaf = False
 
@@ -218,18 +237,7 @@ def prune(root, dataset, node=None):
     return node
 
 
-def calc_accuracy(root, dataset):
-    predicted_labels = list()
-    actual_labels = list()
-    # Get metrics for every testing fold
-    for data in dataset:
-        predicted_labels.append(predict(root, data["attrs"]))
-        actual_labels.append(data["label"])
-    _, _, _, accuracy = eval_one_fold(c_matrix(actual_labels, predicted_labels))
-    return accuracy
-
-
-file = np.loadtxt('co395-cbc-dt/wifi_db/noisy_dataset.txt')
+file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
 train_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in file]
 node, _ = decision_tree_learning(train_dataset, 0)
 best_tree = cross_validation(train_dataset)

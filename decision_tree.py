@@ -154,6 +154,8 @@ def calc_eval(c_matrix):
 def cross_validation(dataset):
     # Split dataset into 10 folds
     folds = cross_fold_split(dataset)
+    max_rate = -1
+    best_tree = None
     for fold in folds:
         # Choose every fold as test set in random order
         train_folds = list(folds)
@@ -169,8 +171,12 @@ def cross_validation(dataset):
             predicted_labels.append(predict(dtree, data["attrs"]))
             actual_labels.append(data["label"])
             print(predicted_labels, actual_labels)
-        print(calc_eval(c_matrix(actual_labels, predicted_labels)))
-    pass
+        precision, recall, f1_data, rate = calc_eval(c_matrix(actual_labels, predicted_labels))
+        print(precision, recall, f1_data, rate)
+        if rate > max_rate:
+            max_rate = rate
+            best_tree = dtree
+    return best_tree
 
 
 def evaluate(test_dataset, trained_tree):
@@ -179,7 +185,75 @@ def evaluate(test_dataset, trained_tree):
     pass
 
 
+def prune(root, dataset, node=None):
+    if node is None:
+        node = root
+
+    if node['is_leaf']:
+        return node
+
+    node['left'] = prune(root, dataset, node['left'])
+    node['right'] = prune(root, dataset, node['right'])
+
+    left = node['left']
+    right = node['right']
+
+    if left['is_leaf'] and right['is_leaf']:
+        original_score = calc_rate(root, dataset)
+
+        node['is_leaf'] = True
+
+        node['label'] = left['label']
+        left_score = calc_rate(root, dataset)
+
+        node['label'] = right['label']
+        right_score = calc_rate(root, dataset)
+
+        changed_to_leaf = False
+
+        if left_score >  original_score:
+            original_score = left_score
+            node['label'] = left['label']
+            changed_to_leaf = True
+
+        if right_score > original_score:
+            node['label'] = right['label']
+            changed_to_leaf = True
+
+        if not changed_to_leaf:
+            node['is_leaf'] = False
+            node['label'] = None
+
+    return node
+        
+
+        
+def calc_rate(root, dataset):
+    predicted_labels = list()
+    actual_labels = list()
+    # Get metrics for every testing fold
+    for data in dataset:
+        predicted_labels.append(predict(root, data["attrs"]))
+        actual_labels.append(data["label"])
+    precision, recall, f1_data, rate = calc_eval(c_matrix(actual_labels, predicted_labels))
+    return rate
+
 file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
 train_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in file]
 node, _ = decision_tree_learning(train_dataset, 0)
-print(cross_validation(train_dataset))
+best_tree = cross_validation(train_dataset)
+
+clean_dataset = train_dataset
+noisy_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in np.loadtxt('co395-cbc-dt/wifi_db/noisy_dataset.txt')]
+
+before_clean_metrics = calc_rate(best_tree, clean_dataset)
+before_noisy_metrics = calc_rate(best_tree, noisy_dataset)
+pruned_tree = prune(best_tree, noisy_dataset)
+after_clean_metrics = calc_rate(pruned_tree, clean_dataset)
+after_noisy_metrics = calc_rate(pruned_tree, noisy_dataset)
+
+print(f'Clean dataset (before): {before_clean_metrics}')
+print(f'Noisy dataset (before): {before_noisy_metrics}')
+print(f'Clean dataset (after): {after_clean_metrics}')
+print(f'Noisy dataset (after): {after_noisy_metrics}')
+

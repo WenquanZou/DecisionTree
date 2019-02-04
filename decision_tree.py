@@ -151,9 +151,11 @@ def cross_validation(dataset):
             max_accuracy = accuracy
             best_tree = dtree
 
+    # Average result for every class of label
     average_precision = [np.mean(x) for x in zip(*precision_matrix)]
     average_recall = [np.mean(x) for x in zip(*recall_matrix)]
     average_f1_data = [np.mean(x) for x in zip(*f1_data_matrix)]
+    # Average accuracy of ten iterations of accuracy
     average_accuracy = np.mean(accuracy_list)
 
     print(f'precision for every class: {average_precision}\n'
@@ -242,17 +244,17 @@ train_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in file]
 node, _ = decision_tree_learning(train_dataset, 0)
 best_tree = cross_validation(train_dataset)
 
-# clean_dataset = train_dataset
-# noisy_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in
-#                  np.loadtxt('co395-cbc-dt/wifi_db/noisy_dataset.txt')]
+clean_dataset = train_dataset
+noisy_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in
+                 np.loadtxt('co395-cbc-dt/wifi_db/noisy_dataset.txt')]
 
-# before_clean_metrics = calc_rate(best_tree, clean_dataset)
-# before_noisy_metrics = calc_rate(best_tree, noisy_dataset)
-# pruned_tree = prune(best_tree, noisy_dataset)
-# after_clean_metrics = calc_rate(pruned_tree, clean_dataset)
-# after_noisy_metrics = calc_rate(pruned_tree, noisy_dataset)
-#
-# print(f'Clean dataset (before): {before_clean_metrics}')
-# print(f'Noisy dataset (before): {before_noisy_metrics}')
-# print(f'Clean dataset (after): {after_clean_metrics}')
-# print(f'Noisy dataset (after): {after_noisy_metrics}')
+_, _, _, before_clean_metrics = evaluate(best_tree, clean_dataset)
+_, _, _, before_noisy_metrics = evaluate(best_tree, noisy_dataset)
+pruned_tree = prune(best_tree, noisy_dataset)
+_, _, _, after_clean_metrics = evaluate(pruned_tree, clean_dataset)
+_, _, _, after_noisy_metrics = evaluate(pruned_tree, noisy_dataset)
+
+print(f'Clean dataset (before): {before_clean_metrics}')
+print(f'Noisy dataset (before): {before_noisy_metrics}')
+print(f'Clean dataset (after): {after_clean_metrics}')
+print(f'Noisy dataset (after): {after_noisy_metrics}')

@@ -2,6 +2,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def decision_tree_learning(train_dataset, depth):
+    # train_dataset: [ {attrs:list, label:value}, ...]
+    if check_label(train_dataset):
+        # Base case: when all the label of dataset are the same then return a leaf node of the tree and the
+        # corresponding depth
+        return {"attr": None, "value": None,
+                "left": None, "right": None, "is_leaf": True, "label": train_dataset[0]["label"]}, depth
+    else:
+        # Find best split method
+        split_attr, split_value = find_split(train_dataset)
+        # Split the training set
+        left_dataset, right_dataset = split_dataset(train_dataset, split_attr, split_value)
+        # Recursive call
+        left, l_depth = decision_tree_learning(left_dataset, depth + 1)
+        right, r_depth = decision_tree_learning(right_dataset, depth + 1)
+        # Construct root node
+        return {"attr": split_attr, "value": split_value,
+                "left": left, "right": right, "is_leaf": False, "label": None}, max(l_depth, r_depth)
+
+
 def check_label(train_dataset):
     # Check all the label of the dataset
     current_label = train_dataset[0]["label"]
@@ -69,26 +89,6 @@ def split_dataset(train_dataset, attr, value):
     return left, right
 
 
-def decision_tree_learning(train_dataset, depth):
-    # train_dataset: [ {attrs:list, label:value}, ...]
-    if check_label(train_dataset):
-        # Base case: when all the label of dataset are the same then return a leaf node of the tree and the
-        # corresponding depth
-        return {"attr": None, "value": None,
-                "left": None, "right": None, "is_leaf": True, "label": train_dataset[0]["label"]}, depth
-    else:
-        # Find best split method
-        split_attr, split_value = find_split(train_dataset)
-        # Split the training set
-        left_dataset, right_dataset = split_dataset(train_dataset, split_attr, split_value)
-        # Recursive call
-        left, l_depth = decision_tree_learning(left_dataset, depth + 1)
-        right, r_depth = decision_tree_learning(right_dataset, depth + 1)
-        # Construct root node
-        return {"attr": split_attr, "value": split_value,
-                "left": left, "right": right, "is_leaf": False, "label": None}, max(l_depth, r_depth)
-
-
 def predict(trained_node, data):
     # trained_node:: decision tree, data::list
     if trained_node["is_leaf"]:
@@ -123,38 +123,10 @@ def c_matrix(actual, predicted):
     return c_matrix
 
 
-def calc_eval(c_matrix):
-    # Keep track on precision and recall of every label to sum
-    precision_sum = 0
-    recall_sum = 0
-    rate_sum = 0
-    total = 0
-    for i in range(4):
-        # One label precision and recall
-        precision_denom = 0
-        recall_denom = 0
-        for j in range(4):
-            precision_denom += c_matrix[i][j]
-            recall_denom += c_matrix[j][i]
-            total += c_matrix[i][j]
-        precision_sum += (c_matrix[i][i] / precision_denom)
-        recall_sum += (c_matrix[i][i] / recall_denom)
-        rate_sum += c_matrix[i][i]
-
-    # Find average precision and recall then find the f1 score
-    precision = precision_sum / 4
-    recall = recall_sum / 4
-
-    # TODO: Require precision recall f1 score for every label
-    f1_data = 2 * precision * recall / (precision + recall)
-    rate = rate_sum / total
-    return precision, recall, f1_data, rate
-
-
 def cross_validation(dataset):
     # Split dataset into 10 folds
     folds = cross_fold_split(dataset)
-    max_rate = -1
+    max_accuracy = -1
     best_tree = None
     for fold in folds:
         # Choose every fold as test set in random order
@@ -164,25 +136,44 @@ def cross_validation(dataset):
         test_fold = list(fold)
         # Training process
         dtree, _ = decision_tree_learning(train_folds, 0)
-        predicted_labels = list()
-        actual_labels = list()
-        # Get metrics for every testing fold
-        for data in test_fold:
-            predicted_labels.append(predict(dtree, data["attrs"]))
-            actual_labels.append(data["label"])
-            print(predicted_labels, actual_labels)
-        precision, recall, f1_data, rate = calc_eval(c_matrix(actual_labels, predicted_labels))
-        print(precision, recall, f1_data, rate)
-        if rate > max_rate:
-            max_rate = rate
+        precision_list, recall_list, f1_data_list, accuracy = evaluate(dtree, test_fold)
+        print(f'precision: {precision_list}, recall: {recall_list}, f1_data: {f1_data_list}, accuracy: {accuracy}')
+        if accuracy > max_accuracy:
+            max_accuracy = accuracy
             best_tree = dtree
     return best_tree
 
 
-def evaluate(test_dataset, trained_tree):
-    # TODO: 10 fold repeat
+def evaluate(dtree, test_fold):
+    predicted_labels = list()
+    actual_labels = list()
+    # Get metrics for every testing fold
+    for data in test_fold:
+        predicted_labels.append(predict(dtree, data["attrs"]))
+        actual_labels.append(data["label"])
 
-    pass
+    # Generate confusion matrix
+    confusion_matrix = c_matrix(actual_labels, predicted_labels)
+    # Keep track on precision and recall of every label to sum
+    precision_list = []
+    recall_list = []
+    accuracy_sum = 0
+    total = 0
+    for i in range(4):
+        # One label precision and recall
+        precision_denom = 0
+        recall_denom = 0
+        for j in range(4):
+            precision_denom += confusion_matrix[i][j]
+            recall_denom += confusion_matrix[j][i]
+            total += confusion_matrix[i][j]
+        precision_list.append(confusion_matrix[i][i] / precision_denom)
+        recall_list.append(confusion_matrix[i][i] / recall_denom)
+        accuracy_sum += confusion_matrix[i][i]
+
+    f1_data_list = list(map(lambda p, r: 2 * p * r / (p + r), precision_list, recall_list))
+    accuracy = accuracy_sum / total
+    return precision_list, recall_list, f1_data_list, accuracy
 
 
 def prune(root, dataset, node=None):
@@ -199,19 +190,19 @@ def prune(root, dataset, node=None):
     right = node['right']
 
     if left['is_leaf'] and right['is_leaf']:
-        original_score = calc_rate(root, dataset)
+        original_score = calc_accuracy(root, dataset)
 
         node['is_leaf'] = True
 
         node['label'] = left['label']
-        left_score = calc_rate(root, dataset)
+        left_score = calc_accuracy(root, dataset)
 
         node['label'] = right['label']
-        right_score = calc_rate(root, dataset)
+        right_score = calc_accuracy(root, dataset)
 
         changed_to_leaf = False
 
-        if left_score >  original_score:
+        if left_score > original_score:
             original_score = left_score
             node['label'] = left['label']
             changed_to_leaf = True
@@ -225,35 +216,35 @@ def prune(root, dataset, node=None):
             node['label'] = None
 
     return node
-        
 
-        
-def calc_rate(root, dataset):
+
+def calc_accuracy(root, dataset):
     predicted_labels = list()
     actual_labels = list()
     # Get metrics for every testing fold
     for data in dataset:
         predicted_labels.append(predict(root, data["attrs"]))
         actual_labels.append(data["label"])
-    precision, recall, f1_data, rate = calc_eval(c_matrix(actual_labels, predicted_labels))
-    return rate
+    _, _, _, accuracy = eval_one_fold(c_matrix(actual_labels, predicted_labels))
+    return accuracy
 
-file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
+
+file = np.loadtxt('co395-cbc-dt/wifi_db/noisy_dataset.txt')
 train_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in file]
 node, _ = decision_tree_learning(train_dataset, 0)
 best_tree = cross_validation(train_dataset)
 
-clean_dataset = train_dataset
-noisy_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in np.loadtxt('co395-cbc-dt/wifi_db/noisy_dataset.txt')]
+# clean_dataset = train_dataset
+# noisy_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in
+#                  np.loadtxt('co395-cbc-dt/wifi_db/noisy_dataset.txt')]
 
-before_clean_metrics = calc_rate(best_tree, clean_dataset)
-before_noisy_metrics = calc_rate(best_tree, noisy_dataset)
-pruned_tree = prune(best_tree, noisy_dataset)
-after_clean_metrics = calc_rate(pruned_tree, clean_dataset)
-after_noisy_metrics = calc_rate(pruned_tree, noisy_dataset)
-
-print(f'Clean dataset (before): {before_clean_metrics}')
-print(f'Noisy dataset (before): {before_noisy_metrics}')
-print(f'Clean dataset (after): {after_clean_metrics}')
-print(f'Noisy dataset (after): {after_noisy_metrics}')
-
+# before_clean_metrics = calc_rate(best_tree, clean_dataset)
+# before_noisy_metrics = calc_rate(best_tree, noisy_dataset)
+# pruned_tree = prune(best_tree, noisy_dataset)
+# after_clean_metrics = calc_rate(pruned_tree, clean_dataset)
+# after_noisy_metrics = calc_rate(pruned_tree, noisy_dataset)
+#
+# print(f'Clean dataset (before): {before_clean_metrics}')
+# print(f'Noisy dataset (before): {before_noisy_metrics}')
+# print(f'Clean dataset (after): {after_clean_metrics}')
+# print(f'Noisy dataset (after): {after_noisy_metrics}')

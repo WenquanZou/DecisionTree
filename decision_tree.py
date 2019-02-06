@@ -30,18 +30,30 @@ def check_label(train_dataset):
     return True
 
 
-def find_entropy_attr(dataset, target_attr):
-    unique_value = set()
-    value_set = [data["attrs"][target_attr] for data in dataset]
+def find_entropy(dataset):
+    value_set = [data["label"] for data in dataset]
+    unique_value = set(value_set)
     entropy = 0
-    for data in dataset:
-        unique_value.add(data["attrs"][target_attr])
     for v in unique_value:
         # Every distinct value with its probability discretely
         count = value_set.count(v)
         prob = count / len(value_set)
         # Compute entropy for the value
         entropy = entropy + -prob * np.log2(prob)
+    return entropy
+
+
+def find_entropy_attr(dataset, target_attr):
+    value_set = [data["attrs"][target_attr] for data in dataset]
+    unique_value = set(value_set)
+    entropy = find_entropy(dataset)
+    for v in unique_value:
+        # Every distinct value with its probability discretely
+        count = value_set.count(v)
+        proportion = count / len(value_set)
+        filtered_dataset = [data for data in dataset if data["attrs"][target_attr] == v]
+        # Compute entropy for the value
+        entropy = entropy - proportion * find_entropy(filtered_dataset)
     return entropy
 
 

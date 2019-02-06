@@ -152,7 +152,8 @@ def cross_validation(dataset):
         train_folds = sum(train_folds, [])
         test_fold = list(fold)
         # Training process
-        dtree, _ = decision_tree_learning(train_folds, 0)
+        dtree, depth = decision_tree_learning(train_folds, 0)
+        print(f'Depth is {depth}')
         # Evaluate for every class
         precision_list, recall_list, f1_data_list, accuracy = evaluate(dtree, test_fold)
         precision_matrix.append(precision_list)
@@ -251,7 +252,10 @@ def prune(root, dataset, node=None):
     return node
 
 
-file = np.loadtxt('co395-cbc-dt/wifi_db/clean_dataset.txt')
+clean = 'co395-cbc-dt/wifi_db/clean_dataset.txt'
+noisy = 'co395-cbc-dt/wifi_db/noisy_dataset.txt'
+
+file = np.loadtxt(noisy)
 train_dataset = [{"attrs": list(line[:-1]), "label": line[-1]} for line in file]
 node, _ = decision_tree_learning(train_dataset, 0)
 best_tree = cross_validation(train_dataset)
